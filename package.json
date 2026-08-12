@@ -1,7 +1,7 @@
 {
-    "name": "pi-patty-bg-tasks",
-    "version": "1.1.6",
-    "description": "Background tasks extension for pi. Claude Code parity — auto-background after 120s, run_in_background flag, Ctrl+B manual background with live hint, streaming jobs attach, file-fd output capture, cooperative steering, agent_bg with progress streaming, and a monitor tool for per-event streaming (stdout lines / WebSocket frames).",
+    "name": "pi-bg-tasks",
+    "version": "1.1.6-fork.1",
+    "description": "Background tasks extension for pi — fork of patty-io/pi-patty-bg-tasks with the interrupt-on-input default dropped: typing during a running bash command queues a steer (Pi-native) instead of aborting it. Auto-background after 120s, run_in_background flag, Ctrl+B manual background with live hint, streaming jobs attach, file-fd output capture, agent_bg with progress streaming, and a monitor tool for per-event streaming.",
     "type": "module",
     "keywords": [
         "pi-package",
@@ -15,7 +15,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/patty-io/pi-patty-bg-tasks.git"
+        "url": "git+https://github.com/elecnix/pi-bg-tasks.git"
     },
     "files": [
         "src/",

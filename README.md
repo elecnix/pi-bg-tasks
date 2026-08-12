@@ -1,7 +1,11 @@
-# pi-patty-bg-tasks
+# pi-bg-tasks
 
 <p align="center">
   <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="README.zh.md">中文</a>
+</p>
+
+<p align="center">
+  <em>Fork of <a href="https://github.com/patty-io/pi-patty-bg-tasks">patty-io/pi-patty-bg-tasks</a> — same background-task toolkit, with the interrupt-on-input default dropped so typing during a running bash command queues a steer (Pi-native) instead of aborting it.</em>
 </p>
 
 <p align="center">
@@ -192,17 +196,35 @@ external process manager, nothing standing between your command and its log. Up 
 slot frees up. Stale logs older than 24h get swept on session start, so `/tmp` never
 turns into a junk drawer.
 
-## Cooperative Steering (Claude Code parity)
+## Steering during a running command (fork change)
 
-Type a message while a backgroundable foreground command is running, and the extension steps in **before** Pi queues your text as steering:
+This fork **drops the interrupt-on-input default** from the upstream
+patty-io/pi-patty-bg-tasks extension.
 
-1. The active foreground command slides into the background (output keeps capturing — nothing is lost).
-2. The current agent turn is aborted.
-3. Your message is re-injected as a fresh user turn the instant the agent is idle.
+- **Upstream behavior (not what this fork does):** typing a message while a
+  backgroundable foreground command is running intercepts the input *before* Pi
+  queues it as steering — the command slides into the background, the current
+  agent turn is aborted, and the message is re-injected as a fresh user turn the
+  instant the agent is idle (Claude Code parity).
+- **This fork:** typing during a running `bash` command does **not** abort it.
+  Pi's **native steering** applies — the message is queued and delivered at the
+  next turn boundary, and the command keeps running. Nothing is lost (output
+  keeps capturing to the job's log).
 
-That's exactly how Claude Code behaves: submitting input during an interruptible tool aborts the tool and starts a new turn, instead of leaving your message stuck in line behind a long-running call. No polling, no waiting your turn.
+The rest of the package is unchanged: auto-background after 120s, Ctrl+B manual
+background, the `jobs` manager, the `monitor` tool, stall detection, and
+`agent_bg` all work exactly as upstream. Only the input-interception /
+abort-on-input default is removed — `src/input.ts` now declines to intercept and
+always falls through to Pi.
 
-**Scope:** this applies to the `bash` tool this extension owns. Long-running tools the extension doesn't wrap fall back to Pi's native steering (queued, delivered at the next turn boundary).
+**Why:** the operator prefers Pi's queue-don't-interrupt behavior over Claude
+Code's abort-on-input behavior — a long-running command should keep running
+while a queued steer waits its turn, rather than being torn down the moment you
+start typing.
+
+**Scope:** this applies to every input typed while a tool is running. Long-running
+tools the extension doesn't wrap already use Pi's native steering (queued,
+delivered at the next turn boundary).
 
 ## Status Bar
 
