@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <em>Fork of <a href="https://github.com/patty-io/pi-patty-bg-tasks">patty-io/pi-patty-bg-tasks</a> — same background-task toolkit, with the interrupt-on-input default dropped so typing during a running bash command queues a steer (Pi-native) instead of aborting it.</em>
+  <em>Fork of <a href="https://github.com/patty-io/pi-patty-bg-tasks">patty-io/pi-patty-bg-tasks</a> — same background-task toolkit, with the interrupt-on-input default dropped so typing during a running bash command queues a steer instead of aborting it — matching both Pi's native steering and what Claude Code actually does.</em>
 </p>
 
 <p align="center">
@@ -205,7 +205,7 @@ patty-io/pi-patty-bg-tasks extension.
   backgroundable foreground command is running intercepts the input *before* Pi
   queues it as steering — the command slides into the background, the current
   agent turn is aborted, and the message is re-injected as a fresh user turn the
-  instant the agent is idle (Claude Code parity).
+  instant the agent is idle.
 - **This fork:** typing during a running `bash` command does **not** abort it.
   Pi's **native steering** applies — the message is queued and delivered at the
   next turn boundary, and the command keeps running. Nothing is lost (output
@@ -217,10 +217,22 @@ background, the `jobs` manager, the `monitor` tool, stall detection, and
 abort-on-input default is removed — `src/input.ts` now declines to intercept and
 always falls through to Pi.
 
-**Why:** the operator prefers Pi's queue-don't-interrupt behavior over Claude
-Code's abort-on-input behavior — a long-running command should keep running
-while a queued steer waits its turn, rather than being torn down the moment you
-start typing.
+**Why:** a long-running command should keep running while a queued steer waits
+its turn, rather than being torn down the moment you start typing.
+
+This fork **adds** Claude Code parity here rather than dropping it. Claude Code
+does not abort on typed input — measured on **Claude Code 2.1.231** (2026-08-13)
+by driving a real interactive session on a pty: while a foreground bash command
+was running, submitting a message left the command completely untouched (no
+signal, ticking at full rate for the whole 48s observation window), the tool call
+stayed open, and the UI showed *"Press up to edit queued messages"*. Claude Code
+queues. Upstream's interrupt-on-input was upstream's own design choice, not
+parity with Claude Code, and the paragraph above used to say otherwise.
+
+Claude Code *does* kill the foreground command on **Esc** (SIGTERM to the process
+group within ~80ms, SIGKILL ~1s later) and *does* background it on **Ctrl+B** or
+at the auto-background timeout — which this fork already matches. Typing was the
+one stimulus the old description got backwards.
 
 **Scope:** this applies to every input typed while a tool is running. Long-running
 tools the extension doesn't wrap already use Pi's native steering (queued,
@@ -258,7 +270,8 @@ A completion notice would fire even after the agent had already learned the job'
 
 - **Live progress in the sidebar.** A running job's pill now shows its **latest output line** (refreshed every second), not just the command — so a long poll/build shows progress at a glance (`◉ qdrant: {"indexed":8540629,"status":"grey"} (2m10s)`). ANSI/control sequences are stripped so the widget stays clean and can't be escape-injected.
 - **No more lingering `sleep` jobs.** A naive `sleep N` wait (even embedded — `cd x; sleep 600; check`, newline-separated, or backgrounded) is now blocked in both `bash` and `bash_bg`, with steering to the tool that ends when the work does: `jobs attach`, the `monitor` tool, or an `until` loop. Sleeps inside real polling loops are never flagged.
-- **Claude Code parity on cancel (verified against CC source).** Pressing **Esc** kills the running foreground command (a deliberate cancel), while typing a new message, **Ctrl+B**, or the auto-background timeout move it to the background instead — exactly CC's `user-cancel` vs `interrupt` behavior. Long work is protected by auto-backgrounding at the timeout + `run_in_background`, not by ignoring a cancel.
+- **Claude Code parity on cancel (verified against CC source).** Pressing **Esc** kills the running foreground command (a deliberate cancel), while **Ctrl+B** or the auto-background timeout move it to the background instead — exactly CC's `user-cancel` vs `interrupt` behavior. Long work is protected by auto-backgrounding at the timeout + `run_in_background`, not by ignoring a cancel.
+  - *Corrected after the fact:* this entry originally also listed "typing a new message" as backgrounding the command in Claude Code. It does not. As of **Claude Code 2.1.231** (measured 2026-08-13) typing leaves the foreground command running and queues the message. The Esc, Ctrl+B and timeout clauses are unaffected. See [Steering during a running command](#steering-during-a-running-command-fork-change).
 
 ### 1.1.0 — Monitor tool & coalesced completions
 
