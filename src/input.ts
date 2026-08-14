@@ -4,12 +4,18 @@
 //
 // The upstream patty-io/pi-patty-bg-tasks extension intercepts user input typed
 // while a foreground bash command is running, backgrounds the command, aborts
-// the current turn, and re-injects the message as a fresh turn — "cooperative
-// steering" / Claude Code parity. This fork drops that default: typing during a
-// running bash command does NOT abort it. Pi's native steering applies instead,
-// which queues the message and delivers it at the next turn boundary. The
-// command keeps running (auto-background after 120s, Ctrl+B, and the rest of
-// the package are unaffected).
+// the current turn, and re-injects the message as a fresh turn ("cooperative
+// steering"). This fork drops that default: typing during a running bash
+// command does NOT abort it. Pi's native steering applies instead, which queues
+// the message and delivers it at the next turn boundary. The command keeps
+// running (auto-background after 120s, Ctrl+B, and the rest of the package are
+// unaffected).
+//
+// Upstream described that interception as Claude Code parity. It is not: Claude
+// Code queues typed input and leaves the foreground command running (measured on
+// CC 2.1.231). Esc kills and Ctrl+B/timeout background, which this fork already
+// matches — so declining to intercept here is what gives parity, not what
+// breaks it.
 //
 // The handler is still registered so the rest of the extension wiring is
 // unchanged; it simply declines to intercept and lets Pi proceed.
