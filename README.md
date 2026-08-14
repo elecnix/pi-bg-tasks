@@ -171,6 +171,7 @@ Prefer slashes? Same powers, different door.
 | `/bg` | Background the current process (same as Ctrl+B) |
 | `/bg-list` | Open the interactive background task manager |
 | `/bg-version` | Show the loaded extension version/path for reload diagnostics |
+| `/bg-prefs` | Choose the bash input style (queue vs interrupt) — see [Preferences](#preferences) |
 
 ## How It Works
 
@@ -211,11 +212,11 @@ patty-io/pi-patty-bg-tasks extension.
   next turn boundary, and the command keeps running. Nothing is lost (output
   keeps capturing to the job's log).
 
-The rest of the package is unchanged: auto-background after 120s, Ctrl+B manual
-background, the `jobs` manager, the `monitor` tool, stall detection, and
-`agent_bg` all work exactly as upstream. Only the input-interception /
-abort-on-input default is removed — `src/input.ts` now declines to intercept and
-always falls through to Pi.
+Only the **default** changed. Both styles are still available and selectable
+per user with **`/bg-prefs`** — see [Preferences](#preferences). The rest of the
+package is unchanged: auto-background after 120s, Ctrl+B manual background, the
+`jobs` manager, the `monitor` tool, stall detection, and `agent_bg` all work
+exactly as upstream.
 
 **Why:** a long-running command should keep running while a queued steer waits
 its turn, rather than being torn down the moment you start typing.
@@ -238,11 +239,61 @@ one stimulus the old description got backwards.
 tools the extension doesn't wrap already use Pi's native steering (queued,
 delivered at the next turn boundary).
 
+## Preferences
+
+The bash input style is a preference, not a hard-coded default. While a
+foreground bash command is running, typing a new message can either be **queued
+as steering** (your message is delivered at the next turn boundary and the
+running command is not aborted) or **interrupt the running command** (background
+it and start a new turn).
+
+Toggle it with **`/bg-prefs`**:
+
+```
+Bash input style (currently: queue)
+  Queue — steer at the next turn (default; command keeps running)
+  Interrupt — background the command and start a new turn
+  Reload from disk
+```
+
+Or edit `<agentDir>/pi-bg-tasks/preferences.json` — by default
+`~/.pi/agent/pi-bg-tasks/preferences.json`, and honoring `PI_CODING_AGENT_DIR`:
+
+```json
+{ "schemaVersion": 1, "bashInputStyle": "queue" }
+```
+
+| Value | Behavior |
+|---|---|
+| `"queue"` *(default)* | The message is queued and delivered at the next turn boundary. The running command is **not** aborted. |
+| `"interrupt"` | The command is moved to the background, the current turn is aborted, and the message is re-injected as a fresh turn once the agent is idle. This is upstream's "cooperative steering". |
+
+After hand-editing, pick *Reload from disk* in `/bg-prefs` (or run `/reload`) to
+apply it — there is deliberately **no filesystem watcher**.
+
+A missing, unreadable, malformed, or too-new file falls back to `"queue"` with a
+one-off warning, and is **never** silently rewritten — your typo survives so you
+can fix it.
+
+> **On the names.** These modes are called `"queue"` and `"interrupt"` rather
+> than `"pi"` and `"claude"` because a vendor label here would be wrong: Claude
+> Code *queues* typed input (measured on CC 2.1.231), so it is `"queue"` that
+> matches Claude Code, not `"interrupt"`. The modes are named for what they do.
+
 ## Status Bar
 
 A live pill widget keeps your running jobs in view — each with its duration and a preview of the command. Completed and failed counts ride along in the status line. When you want the full picture, Shift+Down or `/bg-list` opens the task manager.
 
 ## Releases
+
+### 1.1.6-fork.2 — `/bg-prefs`: the input style is a preference
+
+The fork's default-flip removed the interrupt-on-input path outright, which took the choice away from anyone who liked that cadence. It is back as an opt-in preference, with the fork's `"queue"` default unchanged.
+
+- **New `<agentDir>/pi-bg-tasks/preferences.json`** — `{ "schemaVersion": 1, "bashInputStyle": "queue" | "interrupt" }`, resolved through the exported `getAgentDir()` so `PI_CODING_AGENT_DIR` and rebranded distributions work. Read once at startup; the hot `input` path never touches disk. Fails safe to `"queue"` on any error and never rewrites a malformed file.
+- **New `/bg-prefs` command** — a `select()` picker for the style, plus *Reload from disk* for hand-edits. Writes are atomic (temp file + rename) and preserve unknown keys.
+- **`src/input.ts` gates on the preference** — under `"queue"` it returns before touching the foreground slot, the abort controller, or the message queue.
+- Modes are named `"queue"` / `"interrupt"`, not `"pi"` / `"claude"`: Claude Code queues typed input, so a `"claude"` label on the interrupt mode would be backwards.
 
 ### 1.1.6 — Silent timeout backgrounding (CC parity)
 

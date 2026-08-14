@@ -38,6 +38,7 @@ import { registerMonitorTool } from "./tools/monitor.ts";
 import { registerShortcuts } from "./shortcuts.ts";
 import { registerCommands } from "./commands.ts";
 import { registerInputHandlers } from "./input.ts";
+import { loadPreferences, takePreferencesWarning } from "./preferences.ts";
 
 interface PersistedState {
     schemaVersion?: number;
@@ -46,8 +47,15 @@ interface PersistedState {
 }
 
 /** Extension entry point. */
-export default function (pi: ExtensionAPI): void {
+export default async function (pi: ExtensionAPI): Promise<void> {
     const reg = new BackgroundRegistry();
+
+    // Preferences are read once, before the input handler is registered, so the
+    // hot `input` path only ever reads memory. Pi awaits an async factory
+    // (ExtensionFactory = (pi) => void | Promise<void>), so this completes
+    // before session_start. Any fallback warning is flushed there, where a UI
+    // exists.
+    await loadPreferences();
 
     // ── Tool registration ─────────────────────────────────────────
     // Use the unwrapped tool *definition* so the override inherits Pi's native
@@ -83,6 +91,14 @@ export default function (pi: ExtensionAPI): void {
             process.argv,
             Boolean(process.stdin.isTTY)
         );
+
+        // Flush the one-shot preferences warning, if the loader had to fall
+        // back. At most once per session; silently dropped in non-interactive
+        // modes, where the fail-safe default still applies.
+        const prefsWarning = takePreferencesWarning();
+        if (prefsWarning && !reg.nonInteractive) {
+            ctx.ui.notify(prefsWarning, "warning");
+        }
 
         // Restore serialized background job state.
         const entries = ctx.sessionManager.getEntries();
