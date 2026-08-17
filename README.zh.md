@@ -13,7 +13,6 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pi-patty-bg-tasks"><img alt="npm" src="https://img.shields.io/npm/v/pi-patty-bg-tasks?color=cb3837&label=npm&logo=npm"></a>&nbsp;
   <img alt="Pi v0.37+" src="https://img.shields.io/badge/Pi-v0.37%2B-5b50f0">&nbsp;
   <img alt="dependencies: zero" src="https://img.shields.io/badge/dependencies-zero-3fb950">&nbsp;
   <img alt="tmux: not required" src="https://img.shields.io/badge/tmux-not_required-3fb950">&nbsp;
@@ -25,13 +24,7 @@
 ## 安装
 
 ```
-pi install npm:pi-patty-bg-tasks
-```
-
-或者直接从 GitHub 装:
-
-```
-pi install git:github.com/patty-io/pi-patty-bg-tasks
+pi install git:github.com/elecnix/pi-bg-tasks
 ```
 
 只需 Pi v0.37+,要求仅此一条 —— **零外部依赖**,也**不用 tmux**。后台作业就是普通的 Node.js 子进程,输出直接写进一个文件描述符。没什么要装的,也没什么要盯着的。
@@ -272,8 +265,8 @@ Claude Code **确实**会在按 **Esc** 时杀掉前台命令(约 80ms 内向进
 ## 开发
 
 ```
-git clone https://github.com/patty-io/pi-patty-bg-tasks.git
-cd pi-patty-bg-tasks
+git clone https://github.com/elecnix/pi-bg-tasks.git
+cd pi-bg-tasks
 pnpm install
 pnpm check    # 类型检查
 pnpm test     # 运行测试
